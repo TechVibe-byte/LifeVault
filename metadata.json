@@ -1,0 +1,8 @@
+{
+  "name": "LifeVault",
+  "description": "Mobile-first offline Progressive Web App for personal life tracking, events, and office attendance.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

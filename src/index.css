@@ -1,0 +1,66 @@
+@import "tailwindcss";
+
+@theme {
+  --color-glass: rgba(255, 255, 255, 0.03);
+  --color-glass-dark: rgba(255, 255, 255, 0.03);
+  --color-glass-border: rgba(255, 255, 255, 0.1);
+  --color-glass-border-dark: rgba(255, 255, 255, 0.1);
+
+  --font-sans: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-display: "Inter", system-ui, sans-serif;
+}
+
+@layer base {
+  :root, .dark {
+    --background: 240 0% 4%; /* #0A0A0A */
+    --foreground: 0 0% 100%; 
+    
+    --card: 0 0% 7%; /* #121212 */
+    --card-foreground: 0 0% 100%; /* White */
+    
+    --primary: 244 76% 59%; /* Indigo-600 */
+    --primary-foreground: 0 0% 100%;
+    
+    --secondary: 0 0% 7%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 0 0% 7%;
+    --muted-foreground: 0 0% 45%; /* text-neutral-500 */
+    
+    --border: 0 0% 13%; /* #222222 */
+  }
+}
+
+@layer utilities {
+  .glass {
+    @apply bg-white/[0.03] backdrop-blur-xl border border-white/10 shadow-2xl;
+  }
+  .glass-card {
+    @apply bg-white/[0.03] border border-white/10 rounded-[28px];
+  }
+  .glass-nav {
+    @apply bg-[#121212] border-t border-white/5;
+  }
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .hide-scrollbar {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+}
+
+html {
+  background-color: #050505;
+}
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden; /* App-like layout */
+  color: white;
+  font-family: var(--font-sans);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
