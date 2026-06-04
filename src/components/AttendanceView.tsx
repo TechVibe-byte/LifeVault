@@ -108,7 +108,7 @@ export default function AttendanceView() {
       <div className="glass-card p-5">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Calendar Heatmap</h2>
           <div className="grid grid-cols-7 gap-1 text-center">
-             {['S','M','T','W','T','F','S'].map(d => <div key={d} className="text-xs font-semibold text-gray-400 pb-2">{d}</div>)}
+             {['S','M','T','W','T','F','S'].map((d, i) => <div key={`${d}-${i}`} className="text-xs font-semibold text-gray-400 pb-2">{d}</div>)}
              
              {/* Empty slots for start of month alignment */}
              {Array.from({ length: monthStart.getDay() }).map((_, i) => (

@@ -37,7 +37,7 @@ function StatusBar() {
 
 export default function App() {
   const { theme, fabMenuOpen, setFabMenuOpen } = useAppStore();
-  const { currentTab, setCurrentTab } = useNavigationStore();
+  const { currentTab, setCurrentTab, setAddEventOpen } = useNavigationStore();
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -85,7 +85,10 @@ export default function App() {
           {navItems.map((item) => (
             <li key={item.id} className="relative z-10">
               <button
-                onClick={() => setCurrentTab(item.id as any)}
+                onClick={() => {
+                  setCurrentTab(item.id as any);
+                  setFabMenuOpen(false);
+                }}
                 className={cn(
                   "flex flex-col items-center justify-center w-12 h-12 rounded-xl transition-all duration-300 ease-out",
                   currentTab === item.id 
@@ -127,15 +130,34 @@ export default function App() {
           fabMenuOpen ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-4 scale-95 pointer-events-none"
         )}
       >
-         <button className="flex items-center gap-2 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 px-4 py-2 rounded-full shadow-md border border-gray-100 dark:border-gray-700 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+         <button 
+            onClick={() => {
+              setCurrentTab('calendar');
+              setAddEventOpen(true);
+              setFabMenuOpen(false);
+            }}
+            className="flex items-center gap-2 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 px-4 py-2.5 rounded-full shadow-md border border-gray-100 dark:border-gray-700 text-sm font-semibold hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer active:scale-95"
+         >
             <Calendar className="w-4 h-4 text-primary" />
             Add Event
          </button>
-         <button className="flex items-center gap-2 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 px-4 py-2 rounded-full shadow-md border border-gray-100 dark:border-gray-700 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+         <button 
+            onClick={() => {
+              setCurrentTab('attendance');
+              setFabMenuOpen(false);
+            }}
+            className="flex items-center gap-2 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 px-4 py-2.5 rounded-full shadow-md border border-gray-100 dark:border-gray-700 text-sm font-semibold hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer active:scale-95"
+         >
             <Briefcase className="w-4 h-4 text-orange-500" />
             Mark Attendance
          </button>
-         <button className="flex items-center gap-2 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 px-4 py-2 rounded-full shadow-md border border-gray-100 dark:border-gray-700 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+         <button 
+            onClick={() => {
+              setCurrentTab('activities');
+              setFabMenuOpen(false);
+            }}
+            className="flex items-center gap-2 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 px-4 py-2.5 rounded-full shadow-md border border-gray-100 dark:border-gray-700 text-sm font-semibold hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer active:scale-95"
+         >
             <CheckSquare className="w-4 h-4 text-green-500" />
             Log Activity
          </button>

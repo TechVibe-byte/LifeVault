@@ -55,6 +55,14 @@ export async function toggleEventCompletion(id: string, completed: boolean) {
     return db.events.update(id, { completed });
 }
 
+export async function toggleEventPin(id: string, pinned: boolean) {
+    return db.events.update(id, { pinned });
+}
+
+export async function updateEvent(id: string, event: Partial<CalendarEvent>) {
+    return db.events.update(id, event);
+}
+
 export function useAttendance(monthStr?: string /* YYYY-MM */) {
     return useLiveQuery(() => {
         let q = db.attendance.orderBy('date');
