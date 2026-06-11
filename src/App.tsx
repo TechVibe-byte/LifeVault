@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAppStore } from './store/useAppStore';
 import { useNavigationStore } from './store/useNavigationStore';
-import { Settings, Wifi, Battery, Signal, ArrowLeft, CalendarDays } from 'lucide-react';
+import { Settings, ArrowLeft, CalendarDays } from 'lucide-react';
 import { cn } from './lib/utils';
 import AttendanceView from './components/AttendanceView';
 import SettingsView from './components/SettingsView';
@@ -17,7 +17,7 @@ function StatusBar() {
 
   return (
     <div className="h-10 w-full flex justify-between items-center px-6 text-[12px] font-bold z-20 shrink-0 mt-1 select-none text-neutral-350">
-      <span>
+      <span className="tabular-nums lowercase">
         {time.toLocaleTimeString('en-IN', {
           timeZone: 'Asia/Kolkata',
           hour: '2-digit',
@@ -25,11 +25,6 @@ function StatusBar() {
           hour12: timeFormat === '12h'
         })}
       </span>
-      <div className="flex items-center gap-1.5 text-neutral-400">
-        <Signal className="w-3.5 h-3.5" />
-        <Wifi className="w-3.5 h-3.5" />
-        <Battery className="w-4 h-4 ml-0.5" />
-      </div>
     </div>
   );
 }
