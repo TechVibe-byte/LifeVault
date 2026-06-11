@@ -1,6 +1,6 @@
 {
-  "name": "LifeVault",
-  "description": "Mobile-first offline Progressive Web App for personal life tracking, events, and office attendance.",
+  "name": "Hybrid Tracker",
+  "description": "Premium, mobile-first offline hybrid work attendance tracker to log WFH, office, and off days for easy timesheet references.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

@@ -26,6 +26,9 @@ export interface AttendanceRecord {
   date: string; // YYYY-MM-DD
   status: AttendanceStatus;
   notes?: string;
+  travelExpense?: number;
+  foodExpense?: number;
+  wifiExpense?: number;
   createdAt: number;
 }
 

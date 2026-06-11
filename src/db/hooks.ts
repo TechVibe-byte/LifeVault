@@ -73,16 +73,39 @@ export function useAttendance(monthStr?: string /* YYYY-MM */) {
     }, [monthStr]);
 }
 
-export async function markAttendance(date: string, status: AttendanceStatus, notes?: string) {
+export async function markAttendance(
+    date: string, 
+    status: AttendanceStatus, 
+    notes?: string,
+    travelExpense?: number,
+    foodExpense?: number,
+    wifiExpense?: number
+) {
     const existing = await db.attendance.where('date').equals(date).first();
     if (existing) {
-        return db.attendance.update(existing.id, { status, notes });
+        return db.attendance.update(existing.id, { 
+            status, 
+            notes,
+            travelExpense,
+            foodExpense,
+            wifiExpense
+        });
     }
     return db.attendance.add({
         id: crypto.randomUUID(),
         date,
         status,
         notes,
+        travelExpense,
+        foodExpense,
+        wifiExpense,
         createdAt: Date.now()
     });
+}
+
+export async function deleteAttendance(date: string) {
+    const existing = await db.attendance.where('date').equals(date).first();
+    if (existing) {
+        return db.attendance.delete(existing.id);
+    }
 }

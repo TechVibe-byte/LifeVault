@@ -13,9 +13,9 @@ export default defineConfig(() => {
         registerType: 'autoUpdate',
         includeAssets: ['logo.svg'],
         manifest: {
-          name: 'LifeVault',
-          short_name: 'LifeVault',
-          description: 'Offline-first personal life tracker and office attendance app',
+          name: 'Hybrid Tracker',
+          short_name: 'Hybrid Tracker',
+          description: 'Offline-first hybrid work attendance and expense tracker',
           theme_color: '#0A0A0A',
           background_color: '#0A0A0A',
           display: 'standalone',
