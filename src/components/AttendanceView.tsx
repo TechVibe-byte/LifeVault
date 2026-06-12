@@ -36,10 +36,12 @@ import {
   Plus,
   BadgeAlert,
   Send,
-  CheckCircle2
+  CheckCircle2,
+  Settings
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { sendTelegramNotification } from '../utils/telegram';
+import SettingsView from './SettingsView';
 
 const STATUS_DETAILS = {
   'Office': {
@@ -127,6 +129,7 @@ export default function AttendanceView() {
 
   const [copiedType, setCopiedType] = useState<'office' | 'wfh' | 'all' | 'expense' | null>(null);
   const [activeExpTab, setActiveExpTab] = useState<'monthly' | 'yearly'>('monthly');
+  const [activeTab, setActiveTab] = useState<'tracker' | 'expenses' | 'settings'>('tracker');
 
   // Telegram feedback states
   const [tgNotificationState, setTgNotificationState] = useState<{
@@ -521,60 +524,68 @@ export default function AttendanceView() {
   const todayRecord = recordMap.get(todayStr);
 
   return (
-    <div className="p-5 h-full overflow-y-auto pb-44 hide-scrollbar space-y-6">
-      
-      {/* Premium Hybrid Consistence Head Widget */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-indigo-950 via-neutral-900 to-[#0A0A0A] border border-indigo-500/10 rounded-3xl p-5 shadow-xl">
+    <div className="relative flex flex-col h-full overflow-hidden w-full">
+      {/* Scrollable Main Content Container with spacious bottom padding */}
+      <div className="flex-1 overflow-y-auto p-5 pb-36 hide-scrollbar space-y-6">
+
+      {activeTab === 'tracker' && (
+        <>
+          {/* Premium Hybrid Consistence Head Widget */}
+          <div className="relative overflow-hidden bg-gradient-to-br from-indigo-950 via-neutral-900 to-[#0A0A0A] border border-indigo-500/10 rounded-3xl p-5 shadow-xl">
         <div className="absolute top-0 right-0 p-3 opacity-10 transform translate-x-3 -translate-y-3">
           <TrendingUp className="w-24 h-24 text-indigo-400 rotate-12" />
         </div>
         
-        <div className="relative z-10 flex justify-between items-center">
-          <div>
-            <div className="flex gap-2 items-center">
-              <span className="text-[10px] font-bold tracking-widest text-indigo-300 uppercase">Hybrid Consistency</span>
-              {/* Currency Selector microtoggle */}
-              <button 
-                onClick={() => setCurrency(prev => prev === 'INR' ? 'USD' : 'INR')}
-                className="text-[9px] bg-neutral-800 hover:bg-neutral-700 text-neutral-350 font-extrabold px-1.5 py-0.5 rounded border border-white/5 transition-colors cursor-pointer"
-                title="Change currency notation layout"
-              >
-                Display ({currency === 'INR' ? '₹ INR' : '$ USD'})
-              </button>
+        <div className="relative z-10 flex flex-col items-center text-center space-y-4">
+          <div className="flex flex-wrap gap-2 items-center justify-center">
+            <span className="text-[10px] font-bold tracking-widest text-indigo-300 uppercase">Hybrid Consistency</span>
+            {/* Currency Selector microtoggle */}
+            <button 
+              onClick={() => setCurrency(prev => prev === 'INR' ? 'USD' : 'INR')}
+              className="text-[9px] bg-neutral-800 hover:bg-neutral-700 text-neutral-350 font-extrabold px-1.5 py-0.5 rounded border border-white/5 transition-colors cursor-pointer"
+              title="Change currency notation layout"
+              type="button"
+            >
+              Display ({currency === 'INR' ? '₹' : '$'})
+            </button>
 
-              {/* Telegram Status indicator badge */}
-              <div 
-                className={cn(
-                  "text-[9px] font-extrabold px-1.5 py-0.5 rounded border flex items-center gap-1 select-none",
-                  localStorage.getItem('hybrid_telegram_enabled') === 'true'
-                    ? "bg-indigo-950/40 border-indigo-500/20 text-indigo-300 animate-pulse"
-                    : "bg-neutral-800/60 border-neutral-700 text-neutral-400"
-                )}
-                title={localStorage.getItem('hybrid_telegram_enabled') === 'true' ? "Telegram channel alerts are enabled! They'll send upon logger saves" : "Telegram channel alerts are disabled. Configure in settings."}
-              >
-                <span className={cn(
-                  "h-1.5 w-1.5 rounded-full",
-                  localStorage.getItem('hybrid_telegram_enabled') === 'true' ? "bg-indigo-400" : "bg-neutral-500"
-                )} />
-                Telegram {localStorage.getItem('hybrid_telegram_enabled') === 'true' ? "ON" : "OFF"}
-              </div>
+            {/* Telegram Status indicator badge */}
+            <div 
+              className={cn(
+                "text-[9px] font-extrabold px-1.5 py-0.5 rounded border flex items-center gap-1 select-none",
+                localStorage.getItem('hybrid_telegram_enabled') === 'true'
+                  ? "bg-indigo-950/40 border-indigo-500/20 text-indigo-300 animate-pulse"
+                  : "bg-neutral-800/60 border-neutral-700 text-neutral-400"
+              )}
+              title={localStorage.getItem('hybrid_telegram_enabled') === 'true' ? "Telegram channel alerts are enabled! They'll send upon logger saves" : "Telegram channel alerts are disabled. Configure in settings."}
+            >
+              <span className={cn(
+                "h-1.5 w-1.5 rounded-full",
+                localStorage.getItem('hybrid_telegram_enabled') === 'true' ? "bg-indigo-400" : "bg-neutral-500"
+              )} />
+              Telegram {localStorage.getItem('hybrid_telegram_enabled') === 'true' ? "ON" : "OFF"}
             </div>
-            <h2 className="text-3xl font-extrabold text-white mt-1 font-display tracking-tight flex items-baseline gap-1">
-              {stats.activeStreak} <span className="text-xs font-semibold text-neutral-400">Streak Days</span>
+          </div>
+
+          <div>
+            <h2 className="text-4xl font-extrabold text-white mt-1 font-display tracking-tight flex items-baseline justify-center gap-1.5">
+              {stats.activeStreak} <span className="text-xs font-semibold text-neutral-450 uppercase tracking-wider">Streak Days</span>
             </h2>
-            <p className="text-xs text-neutral-400 mt-2 flex items-center gap-1.5">
-              <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+            <p className="text-[11px] text-neutral-400 mt-2 flex items-center justify-center gap-1.5">
+              <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
               Keep tracking for seamless corporate claims
             </p>
           </div>
           
-          <div className="flex flex-col items-end shrink-0 gap-1 bg-white/5 backdrop-blur-md px-3 py-2 rounded-xl border border-white/5">
-            <span className="text-[9px] text-neutral-400 font-extrabold uppercase">Presence Split</span>
-            <div className="text-xs font-bold text-neutral-200">
-              <span className="text-indigo-400">{stats.officeRatio}%</span> Office
+          <div className="flex items-center justify-center gap-6 bg-white/5 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-white/5 w-full max-w-sm">
+            <div className="text-xs font-bold text-neutral-300 flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-indigo-500" />
+              <span className="text-indigo-400 text-sm font-extrabold">{stats.officeRatio}%</span> Office
             </div>
-            <div className="text-xs font-bold text-neutral-200">
-              <span className="text-emerald-400">{stats.wfhRatio}%</span> WFH
+            <div className="h-4 w-px bg-white/10" />
+            <div className="text-xs font-bold text-neutral-300 flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-emerald-500" />
+              <span className="text-emerald-400 text-sm font-extrabold">{stats.wfhRatio}%</span> WFH
             </div>
           </div>
         </div>
@@ -598,24 +609,22 @@ export default function AttendanceView() {
 
       {/* Quick Mark Today Widget */}
       <div className="bg-[#121212]/30 border border-neutral-800/40 rounded-3xl p-5 space-y-4">
-        <div className="flex justify-between items-center">
-          <div>
-            <h3 className="text-xs font-bold text-neutral-250 flex items-center gap-2 uppercase tracking-wider">
-              <Clock className="w-3.5 h-3.5 text-indigo-400" />
-              Easy-Log: Where are you working today?
-            </h3>
-            <p className="text-[11px] text-neutral-400">Instantly register desk layout</p>
-          </div>
+        <div className="flex flex-col items-center justify-center text-center">
+          <h3 className="text-xs font-bold text-neutral-200 flex items-center gap-2 uppercase tracking-wider justify-center">
+            <Clock className="w-3.5 h-3.5 text-indigo-400" />
+            Easy-Log Today
+          </h3>
+          <p className="text-[11px] text-neutral-450 mt-1">Instantly register workspace status</p>
           {todayRecord && (
             <span className={cn(
-              "text-[9px] uppercase font-bold px-2 py-0.5 rounded border leading-none",
+              "text-[9.5px] uppercase font-extrabold px-2.5 py-1 rounded-full border leading-none mt-2 block",
               todayRecord.status === 'Office' && "bg-indigo-500/10 text-indigo-300 border-indigo-500/20",
               todayRecord.status === 'Work From Home' && "bg-emerald-500/10 text-emerald-300 border-emerald-500/20",
               todayRecord.status === 'Leave' && "bg-amber-500/10 text-amber-300 border-amber-500/20",
               todayRecord.status === 'Holiday' && "bg-pink-500/10 text-pink-300 border-pink-500/20",
               todayRecord.status === 'Absent' && "bg-red-500/10 text-red-300 border-red-500/20",
             )}>
-              {todayRecord.status}
+              Today: {todayRecord.status}
             </span>
           )}
         </div>
@@ -646,9 +655,13 @@ export default function AttendanceView() {
           </button>
         </div>
       </div>
+      </>
+      )}
 
-      {/* --- NEW! DEDICATED ATTENDANCE & EXPENSE LOG FORM (PROMINENT INPUT PANEL) --- */}
-      <form 
+      {activeTab === 'expenses' && (
+        <>
+          {/* --- NEW! DEDICATED ATTENDANCE & EXPENSE LOG FORM (PROMINENT INPUT PANEL) --- */}
+          <form 
         onSubmit={handleSaveFormAttendance}
         className="bg-gradient-to-br from-[#121212] to-[#0D0D0D] border-2 border-slate-800/80 rounded-3xl p-5 space-y-4 shadow-xl"
       >
@@ -785,26 +798,35 @@ export default function AttendanceView() {
           </button>
         </div>
       </form>
+      </>
+      )}
 
-      {/* Main Interactive Calendar Heatmap */}
-      <div className="bg-[#121212]/30 border border-neutral-800/40 rounded-3xl p-5">
-        <div className="flex justify-between items-center mb-5">
+      {activeTab === 'tracker' && (
+        <>
+          {/* Main Interactive Calendar Heatmap */}
+          <div className="bg-[#121212]/30 border border-neutral-800/40 rounded-3xl p-5">
+        <div className="flex flex-col items-center justify-center text-center mb-5 gap-3">
           <div>
-            <h3 className="text-sm font-bold text-white tracking-widest uppercase text-neutral-300">Monthly Workspace Grid</h3>
-            <p className="text-[11px] text-[#8e8e8e]">Click any calendar square to fast-populate the fields above</p>
+            <h3 className="text-sm font-extrabold text-white tracking-widest uppercase text-neutral-200">Monthly Grid</h3>
+            <p className="text-[11px] text-neutral-450 mt-1">Select any square to prompt details logging</p>
           </div>
-          <div className="flex gap-1.5 bg-neutral-900 border border-neutral-800 rounded-xl p-1 shrink-0">
+          <div className="flex gap-2 items-center bg-neutral-900 border border-neutral-800 rounded-xl p-1 shrink-0">
             <button 
               onClick={() => setCurrentDate(subMonths(currentDate, 1))} 
               className="p-1 px-1.5 hover:bg-neutral-800 rounded text-neutral-400 hover:text-white transition-colors cursor-pointer"
               title="Previous Month"
+              type="button"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
+            <span className="text-xs font-bold px-1.5 text-neutral-200 uppercase tracking-wider min-w-[90px] tabular-nums">
+              {format(currentDate, 'MMM yyyy')}
+            </span>
             <button 
               onClick={() => setCurrentDate(addMonths(currentDate, 1))} 
-              className="p-1 px-1.5 hover:bg-neutral-800 rounded text-neutral-400 hover:text-white transition-colors cursor-pointer"
+              className="p-1 px-1.5 hover:bg-[#1C1C1E] hover:bg-neutral-800 rounded text-neutral-400 hover:text-white transition-colors cursor-pointer"
               title="Next Month"
+              type="button"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
@@ -871,6 +893,7 @@ export default function AttendanceView() {
                 onClick={() => {
                   setFormDate(dateStr);
                   handleSelectDate(date);
+                  setActiveTab('expenses');
                 }}
                 disabled={isFutureDate}
                 type="button"
@@ -924,9 +947,13 @@ export default function AttendanceView() {
           </div>
         </div>
       </div>
+      </>
+      )}
 
-      {/* NEW HYBRID EXPENSE & REIMBURSEMENT CALCULATOR DESK */}
-      <div className="bg-[#121212]/30 border border-neutral-800/40 rounded-3xl p-5 space-y-4">
+      {activeTab === 'expenses' && (
+        <>
+          {/* NEW HYBRID EXPENSE & REIMBURSEMENT CALCULATOR DESK */}
+          <div className="bg-[#121212]/30 border border-neutral-800/40 rounded-3xl p-5 space-y-4">
         
         {/* Navigation Selector for Monthly vs Yearly tracking */}
         <div className="flex justify-between items-center border-b border-neutral-800/50 pb-2">
@@ -1152,6 +1179,57 @@ export default function AttendanceView() {
             )}
           </button>
         </div>
+      </div>
+      </>
+      )}
+
+      {activeTab === 'settings' && (
+        <SettingsView />
+      )}
+
+      </div>
+
+      {/* Premium Floating Navigation Switcher Segmented Control at the bottom */}
+      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 w-[220px] bg-[#0c0c0e]/95 backdrop-blur-xl border border-neutral-850/90 p-1 rounded-2xl flex gap-1 select-none z-30 shadow-2xl shadow-black/80">
+        <button
+          type="button"
+          onClick={() => setActiveTab('tracker')}
+          className={cn(
+            "flex-1 flex flex-col items-center justify-center py-2.5 rounded-xl transition-all cursor-pointer relative",
+            activeTab === 'tracker'
+              ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/20"
+              : "text-neutral-500 hover:text-neutral-200 hover:bg-neutral-900/40"
+          )}
+          title="Tracker & Streak"
+        >
+          <CalendarDays className="w-4 h-4 shrink-0" />
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('expenses')}
+          className={cn(
+            "flex-1 flex flex-col items-center justify-center py-2.5 rounded-xl transition-all cursor-pointer relative",
+            activeTab === 'expenses'
+              ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/20"
+              : "text-neutral-500 hover:text-neutral-200 hover:bg-neutral-900/40"
+          )}
+          title="Claims & Costs"
+        >
+          <Coins className="w-4 h-4 shrink-0" />
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('settings')}
+          className={cn(
+            "flex-1 flex flex-col items-center justify-center py-2.5 rounded-xl transition-all cursor-pointer relative",
+            activeTab === 'settings'
+              ? "bg-zinc-700 text-white shadow-md shadow-zinc-700/20"
+              : "text-neutral-500 hover:text-neutral-200 hover:bg-neutral-900/40"
+          )}
+          title="Settings"
+        >
+          <Settings className="w-4 h-4 shrink-0" />
+        </button>
       </div>
 
       {/* --- BACKWARD COMPATIBLE CLICK-BASED CALENDAR MODAL --- */}

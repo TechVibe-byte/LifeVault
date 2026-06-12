@@ -56,42 +56,22 @@ export default function App() {
       {/* iPhone Status Bar */}
       <StatusBar />
 
-      {/* Mini App Header View */}
-      <header className="px-6 py-2.5 flex justify-between items-center border-b border-white/[0.03] relative z-10 shrink-0 select-none">
-        <div className="flex items-center gap-2">
-          <div className="p-1.5 bg-gradient-to-tr from-indigo-600 to-indigo-400 rounded-lg text-white shadow-sm shadow-indigo-500/10">
-            <CalendarDays className="w-4.5 h-4.5" />
+      {/* Mini App Header View with Centered Hybrid Tracker Title */}
+      <header className="px-6 py-3 flex justify-center items-center border-b border-white/[0.03] relative z-10 shrink-0 select-none">
+        <div className="flex flex-col items-center justify-center text-center gap-1">
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 bg-gradient-to-tr from-indigo-600 to-indigo-400 rounded-lg text-white shadow-sm shadow-indigo-500/10">
+              <CalendarDays className="w-4 h-4" />
+            </div>
+            <h1 className="text-sm font-extrabold text-white tracking-widest uppercase">Hybrid Tracker</h1>
           </div>
-          <div>
-            <h1 className="text-sm font-bold text-white tracking-tight leading-none">Hybrid Tracker</h1>
-            <span className="text-[9px] text-neutral-450 font-medium">Hybrid Track</span>
-          </div>
+          <span className="text-[9px] text-neutral-450 font-medium tracking-wider">Secure Offline Companion</span>
         </div>
-
-        {/* Dynamic header button based on active page layout */}
-        {currentTab === 'settings' ? (
-          <button
-            onClick={() => setCurrentTab('attendance')}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-neutral-900 border border-neutral-800 text-xs font-semibold text-neutral-300 hover:text-white transition-colors cursor-pointer"
-            aria-label="Back to attendance"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" /> Keep track
-          </button>
-        ) : (
-          <button
-            onClick={() => setCurrentTab('settings')}
-            className="p-2 rounded-xl bg-neutral-900 border border-neutral-800/85 hover:bg-neutral-800/80 text-neutral-450 hover:text-white transition-colors cursor-pointer"
-            aria-label="Open settings"
-            title="Preferences & Backup"
-          >
-            <Settings className="w-4 h-4" />
-          </button>
-        )}
       </header>
 
-      {/* Main Container Area with dynamic active page display */}
+      {/* Main Container Area */}
       <main className="relative z-10 w-full h-full flex-1 overflow-hidden">
-        {currentTab === 'settings' ? <SettingsView /> : <AttendanceView />}
+        <AttendanceView />
       </main>
 
     </div>

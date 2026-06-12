@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { useAppStore } from '../store/useAppStore';
 import { db } from '../db/db';
-import { Download, Upload, Trash2, Shield, Moon, Sun, Monitor, Send, Bell, ExternalLink, HelpCircle, CheckCircle2 } from 'lucide-react';
+import { Download, Upload, Trash2, Shield, Monitor, Send, HelpCircle, CheckCircle2 } from 'lucide-react';
 import { getTelegramConfig, saveTelegramConfig, sendTelegramNotification, TelegramConfig } from '../utils/telegram';
 
 export default function SettingsView() {
-  const { theme, setTheme, timeFormat, setTimeFormat } = useAppStore();
+  const { timeFormat, setTimeFormat } = useAppStore();
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
 
@@ -180,32 +180,8 @@ export default function SettingsView() {
             <Monitor className="w-5 h-5 text-gray-400" />
             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Appearance</h2>
         </div>
-        
-        <div className="flex items-center justify-between">
-          <span className="font-medium text-gray-700 dark:text-gray-300">Theme</span>
-          <div className="bg-gray-100 dark:bg-gray-800 p-1 rounded-lg flex gap-1">
-             <button 
-                onClick={() => setTheme('light')}
-                className={`p-2 rounded-md transition-colors ${theme === 'light' ? 'bg-white dark:bg-gray-600 shadow-sm' : 'text-gray-500'}`}
-             >
-                 <Sun className="w-4 h-4" />
-             </button>
-             <button 
-                onClick={() => setTheme('dark')}
-                className={`p-2 rounded-md transition-colors ${theme === 'dark' ? 'bg-white dark:bg-gray-600 shadow-sm' : 'text-gray-500'}`}
-             >
-                 <Moon className="w-4 h-4" />
-             </button>
-             <button 
-                onClick={() => setTheme('system')}
-                className={`p-2 rounded-md transition-colors ${theme === 'system' ? 'bg-white dark:bg-gray-600 shadow-sm' : 'text-gray-500'}`}
-             >
-                 <Monitor className="w-4 h-4" />
-             </button>
-          </div>
-        </div>
 
-        <div className="flex items-center justify-between pt-2">
+        <div className="flex items-center justify-between">
           <span className="font-medium text-gray-700 dark:text-gray-300">Time Format</span>
           <div className="bg-gray-100 dark:bg-gray-800 p-1 rounded-lg flex gap-1">
              <button 
