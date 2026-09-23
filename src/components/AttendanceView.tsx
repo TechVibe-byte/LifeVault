@@ -1488,6 +1488,8 @@ export default function AttendanceView() {
             <div>{tgNotificationState.message}</div>
           </div>
         </div>
+      )}
+
       {/* Calendar Sync Modal */}
       <CalendarSyncModal
         isOpen={isCalendarModalOpen}
