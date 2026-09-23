@@ -37,10 +37,14 @@ import {
   BadgeAlert,
   Send,
   CheckCircle2,
-  Settings
+  Settings,
+  Zap,
+  BarChart2
 } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { sendTelegramNotification } from '../utils/telegram';
+import { sendTelegramNotification, pollTelegramCallbackQueries, sendWeeklyTelegramDigest, sendDailyTelegramPrompt } from '../utils/telegram';
+import { useAppStore } from '../store/useAppStore';
+import CalendarSyncModal from './CalendarSyncModal';
 import SettingsView from './SettingsView';
 
 const STATUS_DETAILS = {
@@ -94,6 +98,44 @@ const STATUS_DETAILS = {
 export default function AttendanceView() {
   const [currentDate, setCurrentDate] = useState(new Date());
   
+  // App store presets
+  const { commuteDistance, commuteRate, commuteRoundTrip } = useAppStore();
+  const [isCalendarModalOpen, setIsCalendarModalOpen] = useState(false);
+
+  const presetCommuteCost = (commuteDistance && commuteRate)
+    ? Math.round(commuteDistance * commuteRate * (commuteRoundTrip ? 2 : 1))
+    : 0;
+
+  const handleAutofillFormCommute = () => {
+    if (presetCommuteCost > 0) {
+      setFormTravel(presetCommuteCost.toString());
+    }
+  };
+
+  const handleAutofillModalCommute = () => {
+    if (presetCommuteCost > 0) {
+      setTravelCost(presetCommuteCost.toString());
+    }
+  };
+
+  // Background polling engine for Telegram inline buttons
+  useEffect(() => {
+    pollTelegramCallbackQueries();
+    const interval = setInterval(() => {
+      pollTelegramCallbackQueries();
+    }, 8000);
+
+    const handleFocus = () => {
+      pollTelegramCallbackQueries();
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, []);
+
   // Custom states for the daily interactive date click details modal
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [noteText, setNoteText] = useState('');
@@ -588,6 +630,37 @@ export default function AttendanceView() {
               <span className="text-emerald-400 text-sm font-extrabold">{stats.wfhRatio}%</span> WFH
             </div>
           </div>
+
+          {/* Quick Action Toolbar */}
+          <div className="flex items-center justify-center gap-1.5 pt-1 w-full flex-wrap">
+            <button
+              onClick={() => setIsCalendarModalOpen(true)}
+              className="px-2.5 py-1.5 bg-indigo-600/30 hover:bg-indigo-600/50 border border-indigo-400/30 text-indigo-200 font-bold text-[10px] rounded-xl flex items-center gap-1 transition-all cursor-pointer active:scale-95"
+            >
+              <CalendarIcon className="w-3 h-3 text-indigo-400" />
+              Calendar Sync
+            </button>
+            <button
+              onClick={async () => {
+                const res = await sendWeeklyTelegramDigest();
+                alert(res.message);
+              }}
+              className="px-2.5 py-1.5 bg-emerald-600/30 hover:bg-emerald-600/50 border border-emerald-400/30 text-emerald-200 font-bold text-[10px] rounded-xl flex items-center gap-1 transition-all cursor-pointer active:scale-95"
+            >
+              <BarChart2 className="w-3 h-3 text-emerald-400" />
+              Weekly Digest
+            </button>
+            <button
+              onClick={async () => {
+                const res = await sendDailyTelegramPrompt();
+                alert(res.message);
+              }}
+              className="px-2.5 py-1.5 bg-amber-600/30 hover:bg-amber-600/50 border border-amber-400/30 text-amber-200 font-bold text-[10px] rounded-xl flex items-center gap-1 transition-all cursor-pointer active:scale-95"
+            >
+              <Send className="w-3 h-3 text-amber-400" />
+              6 PM Prompt
+            </button>
+          </div>
         </div>
 
         {/* Proportional visual ratio slider */}
@@ -726,7 +799,19 @@ export default function AttendanceView() {
 
           <div className="grid grid-cols-3 gap-2">
             <div className="space-y-1">
-              <span className="text-[8.5px] font-semibold text-neutral-400 block">🚗 Travel Outlay</span>
+              <div className="flex items-center justify-between">
+                <span className="text-[8.5px] font-semibold text-neutral-400 block">🚗 Travel Outlay</span>
+                {presetCommuteCost > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleAutofillFormCommute}
+                    className="text-[7.5px] bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 font-extrabold px-1 py-0.5 rounded border border-indigo-400/20 cursor-pointer"
+                    title={`Autofill preset commute distance rate`}
+                  >
+                    ⚡ {currency === 'INR' ? '₹' : '$'}{presetCommuteCost}
+                  </button>
+                )}
+              </div>
               <div className="relative">
                 <span className="absolute left-2.5 top-2 text-[10px] text-neutral-500 font-bold">
                   {currency === 'INR' ? '₹' : '$'}
@@ -1292,7 +1377,19 @@ export default function AttendanceView() {
 
                 <div className="grid grid-cols-3 gap-2">
                   <div className="space-y-1">
-                    <span className="text-[8.5px] font-bold text-neutral-400 block uppercase">🚗 Travel ({currency === 'INR' ? '₹' : '$'})</span>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[8.5px] font-bold text-neutral-400 block uppercase">🚗 Travel ({currency === 'INR' ? '₹' : '$'})</span>
+                      {presetCommuteCost > 0 && (
+                        <button
+                          type="button"
+                          onClick={handleAutofillModalCommute}
+                          className="text-[7.5px] bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 font-extrabold px-1 py-0.5 rounded border border-indigo-400/20 cursor-pointer"
+                          title="Autofill preset commute cost"
+                        >
+                          ⚡ {currency === 'INR' ? '₹' : '$'}{presetCommuteCost}
+                        </button>
+                      )}
+                    </div>
                     <input 
                       type="number"
                       placeholder="e.g. 150"
@@ -1391,7 +1488,11 @@ export default function AttendanceView() {
             <div>{tgNotificationState.message}</div>
           </div>
         </div>
-      )}
+      {/* Calendar Sync Modal */}
+      <CalendarSyncModal
+        isOpen={isCalendarModalOpen}
+        onClose={() => setIsCalendarModalOpen(false)}
+      />
 
     </div>
   );

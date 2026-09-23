@@ -13,12 +13,15 @@ export default defineConfig(() => {
         registerType: 'autoUpdate',
         includeAssets: ['logo.svg'],
         manifest: {
-          name: 'Hybrid Tracker',
+          name: 'Hybrid Tracker - Work & Expense Companion',
           short_name: 'Hybrid Tracker',
-          description: 'Offline-first hybrid work attendance and expense tracker',
+          description: 'Offline-first hybrid work attendance and expense tracker with Telegram automation',
           theme_color: '#0A0A0A',
           background_color: '#0A0A0A',
           display: 'standalone',
+          orientation: 'portrait',
+          start_url: '/',
+          scope: '/',
           icons: [
             {
               src: 'logo.svg',

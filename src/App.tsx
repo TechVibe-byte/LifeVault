@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useAppStore } from './store/useAppStore';
 import { useNavigationStore } from './store/useNavigationStore';
-import { Settings, ArrowLeft, CalendarDays } from 'lucide-react';
-import { cn } from './lib/utils';
+import { CalendarDays } from 'lucide-react';
 import AttendanceView from './components/AttendanceView';
-import SettingsView from './components/SettingsView';
+import PWAInstallBanner from './components/PWAInstallBanner';
+import GeofencePromptModal from './components/GeofencePromptModal';
 
 function StatusBar() {
   const [time, setTime] = useState(new Date());
@@ -56,6 +56,9 @@ export default function App() {
       {/* iPhone Status Bar */}
       <StatusBar />
 
+      {/* PWA Install Banner */}
+      <PWAInstallBanner />
+
       {/* Mini App Header View with Centered Hybrid Tracker Title */}
       <header className="px-6 py-3 flex justify-center items-center border-b border-white/[0.03] relative z-10 shrink-0 select-none">
         <div className="flex flex-col items-center justify-center text-center gap-1">
@@ -73,6 +76,9 @@ export default function App() {
       <main className="relative z-10 w-full h-full flex-1 overflow-hidden">
         <AttendanceView />
       </main>
+
+      {/* Geofence Auto-Detection Prompt Modal */}
+      <GeofencePromptModal />
 
     </div>
   );
