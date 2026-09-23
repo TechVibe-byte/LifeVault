@@ -39,7 +39,10 @@ import {
   CheckCircle2,
   Settings,
   Zap,
-  BarChart2
+  BarChart2,
+  List,
+  Search,
+  ArrowUpDown
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { sendTelegramNotification, pollTelegramCallbackQueries, sendWeeklyTelegramDigest, sendDailyTelegramPrompt } from '../utils/telegram';
@@ -171,7 +174,12 @@ export default function AttendanceView() {
 
   const [copiedType, setCopiedType] = useState<'office' | 'wfh' | 'all' | 'expense' | null>(null);
   const [activeExpTab, setActiveExpTab] = useState<'monthly' | 'yearly'>('monthly');
-  const [activeTab, setActiveTab] = useState<'tracker' | 'expenses' | 'settings'>('tracker');
+  const [activeTab, setActiveTab] = useState<'tracker' | 'list' | 'expenses' | 'settings'>('tracker');
+
+  // List view search & filtering state
+  const [listSearchQuery, setListSearchQuery] = useState('');
+  const [listStatusFilter, setListStatusFilter] = useState<string>('All');
+  const [listSortOrder, setListSortOrder] = useState<'desc' | 'asc'>('desc');
 
   // Telegram feedback states
   const [tgNotificationState, setTgNotificationState] = useState<{
@@ -243,6 +251,34 @@ export default function AttendanceView() {
     return new Map(records.map(r => [r.date, r]));
   }, [records]);
 
+  // Filtered & sorted records for List View
+  const filteredListRecords = useMemo(() => {
+    let list = [...allRecords];
+
+    if (listStatusFilter === 'With Expenses') {
+      list = list.filter(r => (r.travelExpense || 0) + (r.foodExpense || 0) + (r.wifiExpense || 0) > 0);
+    } else if (listStatusFilter !== 'All') {
+      list = list.filter(r => r.status === listStatusFilter);
+    }
+
+    if (listSearchQuery.trim()) {
+      const q = listSearchQuery.toLowerCase().trim();
+      list = list.filter(r => 
+        r.date.includes(q) ||
+        r.status.toLowerCase().includes(q) ||
+        (r.notes && r.notes.toLowerCase().includes(q))
+      );
+    }
+
+    list.sort((a, b) => {
+      return listSortOrder === 'desc' 
+        ? b.date.localeCompare(a.date)
+        : a.date.localeCompare(b.date);
+    });
+
+    return list;
+  }, [allRecords, listStatusFilter, listSearchQuery, listSortOrder]);
+
   // Calendar dates
   const monthStart = startOfMonth(currentDate);
   const monthEnd = lastDayOfMonth(currentDate);
@@ -290,45 +326,74 @@ export default function AttendanceView() {
     setWifiCost(existing?.wifiExpense?.toString() || '');
   };
 
+  // Confirmation modal state for accidental clicks / overwrites
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    oldStatus?: string;
+    newStatus?: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {}
+  });
+
   // Save Modal Attendance log details
   const handleSaveAttendance = async () => {
     if (!selectedDate) return;
     const dateStr = format(selectedDate, 'yyyy-MM-dd');
+    const existing = recordMap.get(dateStr);
 
-    if (selectedStatus === 'Clear' || !selectedStatus) {
-      await deleteAttendance(dateStr);
+    const performSave = async () => {
+      if (selectedStatus === 'Clear' || !selectedStatus) {
+        await deleteAttendance(dateStr);
+      } else {
+        const travelVal = parseFloat(travelCost) || 0;
+        const foodVal = parseFloat(foodCost) || 0;
+        const wifiVal = parseFloat(wifiCost) || 0;
+        
+        await markAttendance(
+          dateStr, 
+          selectedStatus, 
+          noteText.trim(), 
+          travelVal >= 0 ? travelVal : 0, 
+          foodVal >= 0 ? foodVal : 0, 
+          wifiVal >= 0 ? wifiVal : 0
+        );
+
+        triggerTelegramBroadcast(
+          dateStr,
+          selectedStatus,
+          noteText.trim(),
+          travelVal >= 0 ? travelVal : 0,
+          foodVal >= 0 ? foodVal : 0,
+          wifiVal >= 0 ? wifiVal : 0
+        );
+      }
+
+      setSelectedDate(null);
+      setNoteText('');
+      setSelectedStatus(null);
+      setTravelCost('');
+      setFoodCost('');
+      setWifiCost('');
+    };
+
+    if (existing && selectedStatus && selectedStatus !== 'Clear' && existing.status !== selectedStatus) {
+      setConfirmModal({
+        isOpen: true,
+        title: '⚠️ Confirm Status Update',
+        message: `The entry for ${dateStr} is currently logged as "${existing.status}". Are you sure you want to change it to "${selectedStatus}"?`,
+        oldStatus: existing.status,
+        newStatus: selectedStatus,
+        onConfirm: performSave
+      });
     } else {
-      const travelVal = parseFloat(travelCost) || 0;
-      const foodVal = parseFloat(foodCost) || 0;
-      const wifiVal = parseFloat(wifiCost) || 0;
-      
-      await markAttendance(
-        dateStr, 
-        selectedStatus, 
-        noteText.trim(), 
-        travelVal >= 0 ? travelVal : 0, 
-        foodVal >= 0 ? foodVal : 0, 
-        wifiVal >= 0 ? wifiVal : 0
-      );
-
-      // Async Telegram notifications trigger
-      triggerTelegramBroadcast(
-        dateStr,
-        selectedStatus,
-        noteText.trim(),
-        travelVal >= 0 ? travelVal : 0,
-        foodVal >= 0 ? foodVal : 0,
-        wifiVal >= 0 ? wifiVal : 0
-      );
+      await performSave();
     }
-
-    // Reset details
-    setSelectedDate(null);
-    setNoteText('');
-    setSelectedStatus(null);
-    setTravelCost('');
-    setFoodCost('');
-    setWifiCost('');
   };
 
   // --- DIRECT LOGGER FORM SUBMIT ---
@@ -336,62 +401,91 @@ export default function AttendanceView() {
     e.preventDefault();
     if (!formDate) return;
 
-    const travelVal = parseFloat(formTravel) || 0;
-    const foodVal = parseFloat(formFood) || 0;
-    const wifiVal = parseFloat(formWifi) || 0;
+    const existing = allRecords.find(r => r.date === formDate);
 
-    await markAttendance(
-      formDate,
-      formStatus,
-      formNotes.trim(),
-      travelVal >= 0 ? travelVal : 0,
-      foodVal >= 0 ? foodVal : 0,
-      wifiVal >= 0 ? wifiVal : 0
-    );
+    const performSave = async () => {
+      const travelVal = parseFloat(formTravel) || 0;
+      const foodVal = parseFloat(formFood) || 0;
+      const wifiVal = parseFloat(formWifi) || 0;
 
-    // Trigger Telegram Broadcast asynchronously
-    triggerTelegramBroadcast(
-      formDate,
-      formStatus,
-      formNotes.trim(),
-      travelVal >= 0 ? travelVal : 0,
-      foodVal >= 0 ? foodVal : 0,
-      wifiVal >= 0 ? wifiVal : 0
-    );
+      await markAttendance(
+        formDate,
+        formStatus,
+        formNotes.trim(),
+        travelVal >= 0 ? travelVal : 0,
+        foodVal >= 0 ? foodVal : 0,
+        wifiVal >= 0 ? wifiVal : 0
+      );
 
-    setShowSavedFeedback(true);
-    setTimeout(() => {
-      setShowSavedFeedback(false);
-    }, 3000);
+      triggerTelegramBroadcast(
+        formDate,
+        formStatus,
+        formNotes.trim(),
+        travelVal >= 0 ? travelVal : 0,
+        foodVal >= 0 ? foodVal : 0,
+        wifiVal >= 0 ? wifiVal : 0
+      );
+
+      setShowSavedFeedback(true);
+      setTimeout(() => {
+        setShowSavedFeedback(false);
+      }, 3000);
+    };
+
+    if (existing && existing.status !== formStatus) {
+      setConfirmModal({
+        isOpen: true,
+        title: '⚠️ Confirm Overwrite',
+        message: `An entry for ${formDate} is currently saved as "${existing.status}". Do you want to update it to "${formStatus}"?`,
+        oldStatus: existing.status,
+        newStatus: formStatus,
+        onConfirm: performSave
+      });
+    } else {
+      await performSave();
+    }
   };
 
   // Quick mark "Today" trigger (reserves previous values if just clicked)
   const handleQuickMarkToday = async (status: keyof typeof STATUS_DETAILS) => {
     const todayStr = format(new Date(), 'yyyy-MM-dd');
     const existing = recordMap.get(todayStr);
-    
-    await markAttendance(
-      todayStr, 
-      status, 
-      existing?.notes || '', 
-      existing?.travelExpense || 0,
-      existing?.foodExpense || 0,
-      existing?.wifiExpense || 0
-    );
 
-    // Trigger Telegram Broadcast asynchronously
-    triggerTelegramBroadcast(
-      todayStr,
-      status,
-      existing?.notes || '',
-      existing?.travelExpense || 0,
-      existing?.foodExpense || 0,
-      existing?.wifiExpense || 0
-    );
+    const performSave = async () => {
+      await markAttendance(
+        todayStr, 
+        status, 
+        existing?.notes || '', 
+        existing?.travelExpense || 0,
+        existing?.foodExpense || 0,
+        existing?.wifiExpense || 0
+      );
 
-    // Also auto-sync our logger form date if it happens to be showing today
-    if (formDate === todayStr) {
-      setFormStatus(status);
+      triggerTelegramBroadcast(
+        todayStr,
+        status,
+        existing?.notes || '',
+        existing?.travelExpense || 0,
+        existing?.foodExpense || 0,
+        existing?.wifiExpense || 0
+      );
+
+      if (formDate === todayStr) {
+        setFormStatus(status);
+      }
+    };
+
+    if (existing && existing.status !== status) {
+      setConfirmModal({
+        isOpen: true,
+        title: '⚠️ Confirm Today\'s Status Change',
+        message: `Today's presence is currently logged as "${existing.status}". Are you sure you want to change it to "${status}"?`,
+        oldStatus: existing.status,
+        newStatus: status,
+        onConfirm: performSave
+      });
+    } else {
+      await performSave();
     }
   };
 
@@ -729,6 +823,184 @@ export default function AttendanceView() {
         </div>
       </div>
       </>
+      )}
+
+      {activeTab === 'list' && (
+        <div className="space-y-4">
+          {/* List View Header & Search Bar */}
+          <div className="bg-gradient-to-br from-[#121212] to-[#0D0D0D] border border-neutral-800 rounded-3xl p-4 space-y-3 shadow-xl">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-indigo-600/20 border border-indigo-500/30 rounded-xl text-indigo-400">
+                  <List className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-xs font-extrabold text-white uppercase tracking-widest">Detailed Log History</h3>
+                  <p className="text-[10px] text-neutral-400">Chronological attendance & expense records</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setListSortOrder(prev => prev === 'desc' ? 'asc' : 'desc')}
+                className="px-2.5 py-1.5 bg-neutral-900 border border-neutral-800 hover:border-neutral-700 text-neutral-300 rounded-xl text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer"
+              >
+                <ArrowUpDown className="w-3 h-3 text-indigo-400" />
+                {listSortOrder === 'desc' ? 'Newest First' : 'Oldest First'}
+              </button>
+            </div>
+
+            {/* Search Input */}
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-neutral-500" />
+              <input
+                type="text"
+                placeholder="Search logs by date, notes, status..."
+                value={listSearchQuery}
+                onChange={(e) => setListSearchQuery(e.target.value)}
+                className="w-full pl-8 pr-8 py-1.5 text-xs bg-neutral-950 border border-neutral-800 rounded-xl text-white placeholder-neutral-500 focus:outline-none focus:border-indigo-500"
+              />
+              {listSearchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setListSearchQuery('')}
+                  className="absolute right-2.5 top-2 text-neutral-500 hover:text-white"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            {/* Filter Chips */}
+            <div className="flex items-center gap-1.5 overflow-x-auto hide-scrollbar pt-1">
+              {['All', 'Office', 'Work From Home', 'Leave', 'Holiday', 'Absent', 'With Expenses'].map((status) => {
+                const isActive = listStatusFilter === status;
+                return (
+                  <button
+                    key={status}
+                    type="button"
+                    onClick={() => setListStatusFilter(status)}
+                    className={cn(
+                      "px-2.5 py-1 text-[10px] font-bold rounded-lg transition-all cursor-pointer shrink-0 border",
+                      isActive
+                        ? "bg-indigo-600 border-indigo-500 text-white shadow-md"
+                        : "bg-neutral-900 border-neutral-800 text-neutral-400 hover:text-neutral-200"
+                    )}
+                  >
+                    {status === 'Work From Home' ? 'WFH' : status}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Records List Container */}
+          <div className="space-y-2.5">
+            {filteredListRecords.length === 0 ? (
+              <div className="bg-neutral-950/60 border border-neutral-850 p-8 rounded-3xl text-center space-y-2">
+                <FileText className="w-8 h-8 text-neutral-600 mx-auto" />
+                <h4 className="text-xs font-bold text-neutral-300">No matching log entries found</h4>
+                <p className="text-[10px] text-neutral-500">Try changing your search term or status filter</p>
+              </div>
+            ) : (
+              filteredListRecords.map((r) => {
+                const parsed = parseISO(r.date);
+                const dateLabel = format(parsed, 'EEEE, MMMM d, yyyy');
+                const isTodayEntry = isToday(parsed);
+                const statusSpec = STATUS_DETAILS[r.status as keyof typeof STATUS_DETAILS] || STATUS_DETAILS['Office'];
+                const StatusIcon = statusSpec.icon;
+
+                const travel = r.travelExpense || 0;
+                const food = r.foodExpense || 0;
+                const wifi = r.wifiExpense || 0;
+                const totalCost = travel + food + wifi;
+
+                return (
+                  <div
+                    key={r.id || r.date}
+                    className="bg-neutral-900/60 hover:bg-neutral-900 border border-neutral-800 rounded-2xl p-3.5 space-y-2.5 transition-all shadow-md group"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-extrabold text-white">{dateLabel}</span>
+                          {isTodayEntry && (
+                            <span className="text-[9px] bg-indigo-500/20 text-indigo-300 px-1.5 py-0.5 rounded font-bold border border-indigo-500/30">
+                              Today
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-[10px] text-neutral-400 font-medium">{r.date}</span>
+                      </div>
+
+                      {/* Status Badge */}
+                      <span className={cn("text-[10px] font-extrabold px-2.5 py-1 rounded-xl border flex items-center gap-1.5 shrink-0", statusSpec.bgClass)}>
+                        <StatusIcon className="w-3 h-3" />
+                        {r.status}
+                      </span>
+                    </div>
+
+                    {/* Expense Breakdown if incurred */}
+                    {totalCost > 0 && (
+                      <div className="bg-neutral-950 p-2.5 rounded-xl border border-neutral-850 flex flex-wrap items-center gap-3 text-[10px] text-neutral-300 font-mono">
+                        {travel > 0 && (
+                          <span className="flex items-center gap-1 text-indigo-300">
+                            <Car className="w-3 h-3 text-indigo-400" /> Travel: {fmtVal(travel)}
+                          </span>
+                        )}
+                        {food > 0 && (
+                          <span className="flex items-center gap-1 text-amber-300">
+                            🍲 Meal: {fmtVal(food)}
+                          </span>
+                        )}
+                        {wifi > 0 && (
+                          <span className="flex items-center gap-1 text-emerald-300">
+                            <Wifi className="w-3 h-3 text-emerald-400" /> WiFi: {fmtVal(wifi)}
+                          </span>
+                        )}
+                        <span className="ml-auto font-extrabold text-white bg-white/5 px-2 py-0.5 rounded border border-white/10">
+                          Total: {fmtVal(totalCost)}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Notes */}
+                    {r.notes && (
+                      <p className="text-[11px] text-neutral-300 italic bg-neutral-950/40 p-2 rounded-xl border border-neutral-850/50">
+                        💬 "{r.notes}"
+                      </p>
+                    )}
+
+                    {/* Quick Actions Footer */}
+                    <div className="flex items-center justify-between pt-1 border-t border-neutral-800/50 text-[10px]">
+                      <span className="text-neutral-500 font-mono">Recorded in IndexedDB</span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleSelectDate(parsed)}
+                          className="px-2.5 py-1 bg-neutral-800 hover:bg-neutral-700 text-neutral-200 font-bold rounded-lg transition-colors cursor-pointer flex items-center gap-1"
+                        >
+                          ✏️ Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            if (confirm(`Delete attendance entry for ${dateLabel}?`)) {
+                              await deleteAttendance(r.date);
+                            }
+                          }}
+                          className="px-2 py-1 bg-red-950/40 hover:bg-red-900/60 text-red-400 font-bold rounded-lg transition-colors cursor-pointer"
+                          title="Delete Entry"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
       )}
 
       {activeTab === 'expenses' && (
@@ -1275,7 +1547,7 @@ export default function AttendanceView() {
       </div>
 
       {/* Premium Floating Navigation Switcher Segmented Control at the bottom */}
-      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 w-[220px] bg-[#0c0c0e]/95 backdrop-blur-xl border border-neutral-850/90 p-1 rounded-2xl flex gap-1 select-none z-30 shadow-2xl shadow-black/80">
+      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 w-[270px] bg-[#0c0c0e]/95 backdrop-blur-xl border border-neutral-850/90 p-1 rounded-2xl flex gap-1 select-none z-30 shadow-2xl shadow-black/80">
         <button
           type="button"
           onClick={() => setActiveTab('tracker')}
@@ -1285,9 +1557,22 @@ export default function AttendanceView() {
               ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/20"
               : "text-neutral-500 hover:text-neutral-200 hover:bg-neutral-900/40"
           )}
-          title="Tracker & Streak"
+          title="Tracker Calendar"
         >
           <CalendarDays className="w-4 h-4 shrink-0" />
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('list')}
+          className={cn(
+            "flex-1 flex flex-col items-center justify-center py-2.5 rounded-xl transition-all cursor-pointer relative",
+            activeTab === 'list'
+              ? "bg-amber-600 text-white shadow-md shadow-amber-600/20"
+              : "text-neutral-500 hover:text-neutral-200 hover:bg-neutral-900/40"
+          )}
+          title="Detailed List History"
+        >
+          <List className="w-4 h-4 shrink-0" />
         </button>
         <button
           type="button"
@@ -1486,6 +1771,59 @@ export default function AttendanceView() {
           <div className="text-xs font-bold leading-tight">
             <div className="font-extrabold text-[9px] uppercase tracking-wider opacity-60">Telegram Broadcast</div>
             <div>{tgNotificationState.message}</div>
+          </div>
+        </div>
+      )}
+
+      {/* Status Change Confirmation Modal */}
+      {confirmModal.isOpen && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-zinc-900 border border-amber-500/30 text-white rounded-3xl p-5 max-w-sm w-full space-y-4 shadow-2xl animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-amber-500/20 border border-amber-500/30 rounded-xl text-amber-400">
+                  <BadgeAlert className="w-5 h-5 text-amber-400" />
+                </div>
+                <h3 className="text-sm font-extrabold text-white">{confirmModal.title}</h3>
+              </div>
+              <button onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))} className="text-zinc-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-xs text-zinc-300 leading-relaxed">
+              {confirmModal.message}
+            </p>
+
+            {confirmModal.oldStatus && confirmModal.newStatus && (
+              <div className="flex items-center justify-center gap-3 bg-zinc-950 p-3 rounded-2xl border border-zinc-800 text-xs">
+                <span className="font-extrabold px-2.5 py-1 rounded-lg bg-zinc-800 text-zinc-300 border border-zinc-700">
+                  {confirmModal.oldStatus}
+                </span>
+                <span className="text-amber-400 font-bold">➔</span>
+                <span className="font-extrabold px-2.5 py-1 rounded-lg bg-indigo-600 text-white shadow-md">
+                  {confirmModal.newStatus}
+                </span>
+              </div>
+            )}
+
+            <div className="flex gap-2 pt-1">
+              <button
+                onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+                className="flex-1 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold rounded-xl text-xs transition-all cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  confirmModal.onConfirm();
+                  setConfirmModal(prev => ({ ...prev, isOpen: false }));
+                }}
+                className="flex-1 py-2.5 bg-amber-600 hover:bg-amber-500 text-white font-extrabold rounded-xl text-xs transition-all shadow-md active:scale-95 cursor-pointer"
+              >
+                Yes, Update Log
+              </button>
+            </div>
           </div>
         </div>
       )}
