@@ -63,7 +63,7 @@ export async function sendTelegramNotification(
 
     let statusLine = '';
     if (status === 'Office') {
-      statusLine = `<b>💼 Status: He was in Office today!</b>`;
+      statusLine = `<b>💼 Status: Working from Office today!</b>`;
     } else if (status === 'Work From Home') {
       statusLine = `<b>🏠 Status: Working From Home (WFH) today!</b>`;
     } else if (status === 'Leave') {
