@@ -26,6 +26,7 @@ export interface AttendanceRecord {
   date: string; // YYYY-MM-DD
   status: AttendanceStatus;
   notes?: string;
+  telegramMessageId?: number;
   travelExpense?: number;
   foodExpense?: number;
   wifiExpense?: number;

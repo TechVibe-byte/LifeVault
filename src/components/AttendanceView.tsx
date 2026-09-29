@@ -45,7 +45,7 @@ import {
   ArrowUpDown
 } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { sendTelegramNotification, pollTelegramCallbackQueries, sendWeeklyTelegramDigest, sendDailyTelegramPrompt } from '../utils/telegram';
+import { sendTelegramNotification, deleteTelegramMessage, pollTelegramCallbackQueries, sendWeeklyTelegramDigest, sendDailyTelegramPrompt } from '../utils/telegram';
 import { useAppStore } from '../store/useAppStore';
 import CalendarSyncModal from './CalendarSyncModal';
 import SettingsView from './SettingsView';
@@ -194,16 +194,21 @@ export default function AttendanceView() {
     notes?: string,
     travel?: number,
     food?: number,
-    wifi?: number
-  ) => {
+    wifi?: number,
+    oldMessageId?: number
+  ): Promise<number | undefined> => {
     const isTelegramActive = localStorage.getItem('hybrid_telegram_enabled') === 'true';
-    if (!isTelegramActive) return;
+    if (!isTelegramActive) return undefined;
 
     setTgNotificationState({
       show: true,
       status: 'sending',
       message: 'Broadcasting telemetry to Telegram Bot...'
     });
+
+    if (oldMessageId) {
+      await deleteTelegramMessage(oldMessageId);
+    }
 
     const result = await sendTelegramNotification(dateStr, status, notes, travel, food, wifi);
     
@@ -225,6 +230,8 @@ export default function AttendanceView() {
     setTimeout(() => {
       setTgNotificationState(prev => ({ ...prev, show: false }));
     }, 4500);
+
+    return result.messageId;
   };
 
   useEffect(() => {
@@ -354,23 +361,24 @@ export default function AttendanceView() {
         const travelVal = parseFloat(travelCost) || 0;
         const foodVal = parseFloat(foodCost) || 0;
         const wifiVal = parseFloat(wifiCost) || 0;
-        
+        const messageId = await triggerTelegramBroadcast(
+          dateStr,
+          selectedStatus,
+          noteText.trim(),
+          travelVal >= 0 ? travelVal : 0,
+          foodVal >= 0 ? foodVal : 0,
+          wifiVal >= 0 ? wifiVal : 0,
+          existing?.telegramMessageId
+        );
+
         await markAttendance(
           dateStr, 
           selectedStatus, 
           noteText.trim(), 
           travelVal >= 0 ? travelVal : 0, 
           foodVal >= 0 ? foodVal : 0, 
-          wifiVal >= 0 ? wifiVal : 0
-        );
-
-        triggerTelegramBroadcast(
-          dateStr,
-          selectedStatus,
-          noteText.trim(),
-          travelVal >= 0 ? travelVal : 0,
-          foodVal >= 0 ? foodVal : 0,
-          wifiVal >= 0 ? wifiVal : 0
+          wifiVal >= 0 ? wifiVal : 0,
+          messageId !== undefined ? messageId : existing?.telegramMessageId
         );
       }
 
@@ -408,22 +416,24 @@ export default function AttendanceView() {
       const foodVal = parseFloat(formFood) || 0;
       const wifiVal = parseFloat(formWifi) || 0;
 
+      const messageId = await triggerTelegramBroadcast(
+        formDate,
+        formStatus,
+        formNotes.trim(),
+        travelVal >= 0 ? travelVal : 0,
+        foodVal >= 0 ? foodVal : 0,
+        wifiVal >= 0 ? wifiVal : 0,
+        existing?.telegramMessageId
+      );
+
       await markAttendance(
         formDate,
         formStatus,
         formNotes.trim(),
         travelVal >= 0 ? travelVal : 0,
         foodVal >= 0 ? foodVal : 0,
-        wifiVal >= 0 ? wifiVal : 0
-      );
-
-      triggerTelegramBroadcast(
-        formDate,
-        formStatus,
-        formNotes.trim(),
-        travelVal >= 0 ? travelVal : 0,
-        foodVal >= 0 ? foodVal : 0,
-        wifiVal >= 0 ? wifiVal : 0
+        wifiVal >= 0 ? wifiVal : 0,
+        messageId !== undefined ? messageId : existing?.telegramMessageId
       );
 
       setShowSavedFeedback(true);
@@ -451,23 +461,35 @@ export default function AttendanceView() {
     const todayStr = format(new Date(), 'yyyy-MM-dd');
     const existing = recordMap.get(todayStr);
 
+    if (existing && existing.status === status) {
+      setTgNotificationState({
+        show: true,
+        status: 'success',
+        message: 'Entry already tracked for today!'
+      });
+      setTimeout(() => setTgNotificationState(prev => ({ ...prev, show: false })), 3000);
+      return;
+    }
+
     const performSave = async () => {
+      const messageId = await triggerTelegramBroadcast(
+        todayStr,
+        status,
+        existing?.notes || '',
+        existing?.travelExpense || 0,
+        existing?.foodExpense || 0,
+        existing?.wifiExpense || 0,
+        existing?.telegramMessageId
+      );
+
       await markAttendance(
         todayStr, 
         status, 
         existing?.notes || '', 
         existing?.travelExpense || 0,
         existing?.foodExpense || 0,
-        existing?.wifiExpense || 0
-      );
-
-      triggerTelegramBroadcast(
-        todayStr,
-        status,
-        existing?.notes || '',
-        existing?.travelExpense || 0,
-        existing?.foodExpense || 0,
-        existing?.wifiExpense || 0
+        existing?.wifiExpense || 0,
+        messageId !== undefined ? messageId : existing?.telegramMessageId
       );
 
       if (formDate === todayStr) {

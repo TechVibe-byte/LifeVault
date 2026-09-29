@@ -45,7 +45,7 @@ export async function sendTelegramNotification(
   travelExpense?: number,
   foodExpense?: number,
   wifiExpense?: number
-): Promise<{ success: boolean; message: string }> {
+): Promise<{ success: boolean; message: string; messageId?: number }> {
   const config = getTelegramConfig();
   if (!config.enabled) {
     return { success: false, message: 'Telegram updates are disabled in settings.' };
@@ -114,7 +114,7 @@ export async function sendTelegramNotification(
 
     const resJson = await response.json();
     if (response.ok && resJson.ok) {
-      return { success: true, message: 'Notification sent successfully to Telegram!' };
+      return { success: true, message: 'Notification sent successfully to Telegram!', messageId: resJson.result?.message_id };
     } else {
       const errMsg = resJson.description || 'Unknown Telegram API response error.';
       return { success: false, message: `Telegram Error: ${errMsg}` };
@@ -122,6 +122,30 @@ export async function sendTelegramNotification(
   } catch (err: any) {
     console.error('Telegram dispatch crashed:', err);
     return { success: false, message: `Failed to connect to Telegram: ${err.message}` };
+  }
+}
+
+export async function deleteTelegramMessage(messageId: number): Promise<boolean> {
+  const config = getTelegramConfig();
+  if (!config.enabled || !config.botToken || !config.chatId) return false;
+
+  try {
+    const payload = {
+      chat_id: config.chatId,
+      message_id: messageId
+    };
+
+    const response = await fetch(`https://api.telegram.org/bot${config.botToken}/deleteMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    const resJson = await response.json();
+    return response.ok && resJson.ok;
+  } catch (err) {
+    console.error('Failed to delete Telegram message:', err);
+    return false;
   }
 }
 

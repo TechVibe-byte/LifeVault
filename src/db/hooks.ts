@@ -79,7 +79,8 @@ export async function markAttendance(
     notes?: string,
     travelExpense?: number,
     foodExpense?: number,
-    wifiExpense?: number
+    wifiExpense?: number,
+    telegramMessageId?: number
 ) {
     const existing = await db.attendance.where('date').equals(date).first();
     if (existing) {
@@ -88,7 +89,8 @@ export async function markAttendance(
             notes,
             travelExpense,
             foodExpense,
-            wifiExpense
+            wifiExpense,
+            telegramMessageId: telegramMessageId !== undefined ? telegramMessageId : existing.telegramMessageId
         });
     }
     return db.attendance.add({
@@ -99,6 +101,7 @@ export async function markAttendance(
         travelExpense,
         foodExpense,
         wifiExpense,
+        telegramMessageId,
         createdAt: Date.now()
     });
 }
